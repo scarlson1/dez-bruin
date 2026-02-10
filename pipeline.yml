@@ -6,33 +6,33 @@
 # - Variables (JSON Schema): https://getbruin.com/docs/bruin/getting-started/pipeline-variables
 # - Run command: https://getbruin.com/docs/bruin/commands/run
 
-# TODO: Set a pipeline name (string). This shows up in logs + `BRUIN_PIPELINE` for Python assets.
-name: TODO_SET_PIPELINE_NAME
+# Set a pipeline name (string). This shows up in logs + `BRUIN_PIPELINE` for Python assets.
+name: "NYC TAXI"
 
-# TODO: Pick a schedule ("daily", "hourly", "weekly", "monthly") or a cron string.
-schedule: TODO_SET_SCHEDULE
+# Pick a schedule ("daily", "hourly", "weekly", "monthly") or a cron string.
+schedule: "daily"
 
-# TODO: Set the earliest date this pipeline should consider for full refresh backfills.
+# Set the earliest date this pipeline should consider for full refresh backfills.
 # Format: YYYY-MM-DD
-start_date: "TODO_SET_START_DATE"
+start_date: "2026-02-09"
 
-# TODO: Configure default connections so assets can omit explicit `connection: ...`.
+# Configure default connections so assets can omit explicit `connection: ...`.
 # Common pattern: `duckdb: duckdb-default` for local dev.
 # Docs (connections): https://getbruin.com/docs/bruin/commands/connections
 default_connections:
-  duckdb: TODO_CONNECTION_NAME
+  duckdb: duckdb-default
 
-# TODO: Define pipeline variables using JSON Schema and defaults.
+# Define pipeline variables using JSON Schema and defaults.
 # - Variables must have a `default` so assets can render without `--var`.
 # - In SQL/YAML assets: reference as `{{ var.my_variable }}`.
 # - In Python assets: read JSON from env var `BRUIN_VARS`.
 variables:
-  # TODO: Define `taxi_types` as an array of strings with a sensible default.
+  # Define `taxi_types` as an array of strings with a sensible default.
   taxi_types:
-    type: TODO  # should be: array
+    type: ["yellow", "green"]  # should be: array
     items:
-      type: TODO  # should be: string
-    default: TODO  # e.g. ["yellow", "green"]
+      type: string  # should be: string
+    default: "yellow"  # e.g. ["yellow", "green"]
 #   other_string_var: (optional) Add your own variable and use it in both Python and SQL assets.
 #     type: string
 #     default: "my_value"

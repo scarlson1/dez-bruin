@@ -1,0 +1,64 @@
+# SEED METHOD MORE SUITABLE FOR STATIC DATA (use python to loop by month)
+
+# name: ingestion.yellow_trips
+
+# type: duckdb.seed
+
+# parameters:
+#   path: https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2025-01.parquet
+
+# columns:
+#   - name: vendorid
+#     type: string
+#     description: "Taxi technology provider (1 = Creative Mobile Technologies, 2 = VeriFone Inc.) - Note: Raw data may contain nulls, filtered in staging"
+#   - name: tpep_pickup_datetime
+#     type: timestamp
+#     description: Date and time when the meter was engaged
+#   - name: tpep_dropoff_datetime
+#     type: timestamp
+#     description: Date and time when the meter was disengaged
+#   - name: passenger_count
+#     type: integer
+#     description: Number of passengers in the vehicle
+#   - name: trip_distance
+#     type: float
+#     description: Trip distance in miles
+#   - name: pulocationid
+#     type: string
+#     description: TLC Taxi Zone where the meter was engaged
+#   - name: dolocationid
+#     type: string
+#     description: TLC Taxi Zone where the meter was disengaged
+#   - name: ratecodeid
+#     type: integer
+#     description: Rate code (1=Standard, 2=JFK, 3=Newark, 4=Nassau/Westchester, 5=Negotiated, 6=Group)
+#   - name: store_and_fwd_flag
+#     type: string
+#     description: Trip record held in vehicle memory (Y/N)
+#   - name: payment_type
+#     type: integer
+#     description: Payment method (1=Credit card, 2=Cash, 3=No charge, 4=Dispute, 5=Unknown, 6=Voided)
+#   - name: fare_amount
+#     type: float
+#     description: Time and distance fare
+#   - name: extra
+#     type: float
+#     description: Miscellaneous extras and surcharges
+#   - name: mta_tax
+#     type: float
+#     description: MTA tax
+#   - name: tip_amount
+#     type: float
+#     description: Tip amount (credit card only)
+#   - name: tolls_amount
+#     type: float
+#     description: Total tolls paid
+#   - name: improvement_surcharge
+#     type: float
+#     description: Improvement surcharge
+#   - name: total_amount
+#     type: float
+#     description: Total amount charged
+#   - name: trip_type
+#     type: integer
+#     description: Trip type (1=Street-hail, 2=Dispatch)
