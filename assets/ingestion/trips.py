@@ -1,10 +1,11 @@
 """@bruin
 
 # - Convention in this module: use an `ingestion.` schema for raw ingestion tables.
-name: ingestion.nyc_taxi_trips
+name: ingestion.trips
 
 # Docs: https://getbruin.com/docs/bruin/assets/python
 type: python
+connection: duckdb-default
 
 # Pick a Python image version (Bruin runs Python in isolated environments).
 image: python:3.13
@@ -34,10 +35,10 @@ columns:
   - name: vendorid
     type: string
     description: "Taxi technology provider (1 = Creative Mobile Technologies, 2 = VeriFone Inc.) - Note: Raw data may contain nulls, filtered in staging"
-  - name: pickup_datetime
+  - name: lpep_pickup_datetime
     type: timestamp
     description: Date and time when the meter was engaged
-  - name: dropoff_datetime
+  - name: lpep_dropoff_datetime
     type: timestamp
     description: Date and time when the meter was disengaged
   - name: passenger_count
@@ -132,8 +133,24 @@ def _month_starts(start: date, end: date):
 
 
 def _fetch_parquet(url: str) -> pd.DataFrame:
-    response = requests.get(url, timeout=60)
-    response.raise_for_status()
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, timeout=60, headers=headers)
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        # Handle 403s (and optionally other HTTP errors) more gracefully so a single bad URL
+        # doesn't fail the entire ingestion run.
+        status = response.status_code
+        if status == 403:
+            # Common causes:
+            # - File is not (or no longer) publicly accessible
+            # - URL is incorrect for the given month / taxi type
+            # - Remote server is applying additional access controls
+            print(f"Warning: received HTTP 403 for {url}. Skipping this file.")
+            return pd.DataFrame()
+        # Re-raise for non-403 errors so they are still visible.
+        raise
+
     table = pq.read_table(io.BytesIO(response.content))
     return table.to_pandas()
 
@@ -160,7 +177,8 @@ def materialize():
     - Add a column like `extracted_at` for lineage/debugging (timestamp of extraction).
     - Prefer append-only in ingestion; handle duplicates in staging.
     """
-
+    # https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2019-01.parquet
+    # https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2019-01.parquet
     start = _parse_date(start_date, "BRUIN_START_DATE")
     end = _parse_date(end_date, "BRUIN_END_DATE")
 
@@ -176,6 +194,7 @@ def materialize():
             df = _fetch_parquet(url)
             df["extracted_at"] = extracted_at
             dataframes.append(df)
+            print(f"downloaded {taxi_type} {month:02d} {year:04d}")
 
     if not dataframes:
         return pd.DataFrame()

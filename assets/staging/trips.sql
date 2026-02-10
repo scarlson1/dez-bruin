@@ -5,23 +5,17 @@
 # - Quality checks (built-ins): https://getbruin.com/docs/bruin/quality/available_checks
 # - Custom checks: https://getbruin.com/docs/bruin/quality/custom
 
-# TODO: Set the asset name (recommended: staging.trips).
-name: TODO_SET_ASSET_NAME
-# TODO: Set platform type.
+# Set the asset name (recommended: staging.trips).
+name: staging.trips
 # Docs: https://getbruin.com/docs/bruin/assets/sql
-# suggested type: duckdb.sql
-type: TODO
+type: duckdb.sql
 
-# TODO: Declare dependencies so `bruin run ... --downstream` and lineage work.
-# Examples:
-# depends:
-#   - ingestion.trips
-#   - ingestion.payment_lookup
+# Declare dependencies so `bruin run ... --downstream` and lineage work.
 depends:
-  - TODO_DEP_1
-  - TODO_DEP_2
+  - ingestion.trips
+  - ingestion.payment_lookup
 
-# TODO: Choose time-based incremental processing if the dataset is naturally time-windowed.
+# Choose time-based incremental processing if the dataset is naturally time-windowed.
 # - This module expects you to use `time_interval` to reprocess only the requested window.
 materialization:
   # What is materialization?
@@ -32,7 +26,7 @@ materialization:
   # - table: persisted table
   # - view: persisted view (if the platform supports it)
   type: table
-  # TODO: set a materialization strategy.
+  # set a materialization strategy.
   # Docs: https://getbruin.com/docs/bruin/assets/materialization
   # suggested strategy: time_interval
   #
@@ -47,38 +41,100 @@ materialization:
   # - delete+insert (refresh partitions based on incremental_key values)
   # - merge (upsert based on primary key)
   # - time_interval (refresh rows within a time window)
-  strategy: TODO
-  # TODO: set incremental_key to your event time column (DATE or TIMESTAMP).
-  incremental_key: TODO_SET_INCREMENTAL_KEY
-  # TODO: choose `date` vs `timestamp` based on the incremental_key type.
-  time_granularity: TODO_SET_GRANULARITY
+  strategy: time_interval
+  # set incremental_key to your event time column (DATE or TIMESTAMP).
+  incremental_key: lpep_pickup_datetime
+  # choose `date` vs `timestamp` based on the incremental_key type.
+  time_granularity: timestamp
 
 # TODO: Define output columns, mark primary keys, and add a few checks.
 columns:
-  - name: TODO_pk1
-    type: TODO
-    description: TODO
-    primary_key: true
-    nullable: false
-    checks:
-      - name: not_null
-  - name: TODO_metric
-    type: TODO
-    description: TODO
-    checks:
-      - name: non_negative
+  - name: composite_key
+    type: string
+    description: Unique key - composite of DO location, PU location, PU datetime, DO datetime, total_amount
+  - name: vendorid
+    type: string
+    description: "Taxi technology provider (1 = Creative Mobile Technologies, 2 = VeriFone Inc.) - Note: Raw data may contain nulls, filtered in staging"
+  - name: pickup_datetime
+    type: timestamp
+    description: Date and time when the meter was engaged
+  - name: dropoff_datetime
+    type: timestamp
+    description: Date and time when the meter was disengaged
+  - name: passenger_count
+    type: integer
+    description: Number of passengers in the vehicle
+  - name: trip_distance
+    type: float
+    description: Trip distance in miles
+  - name: pulocationid
+    type: string
+    description: TLC Taxi Zone where the meter was engaged
+  - name: dolocationid
+    type: string
+    description: TLC Taxi Zone where the meter was disengaged
+  - name: ratecodeid
+    type: integer
+    description: Rate code (1=Standard, 2=JFK, 3=Newark, 4=Nassau/Westchester, 5=Negotiated, 6=Group)
+  - name: store_and_fwd_flag
+    type: string
+    description: Trip record held in vehicle memory (Y/N)
+  - name: payment_type
+    type: integer
+    description: Payment method (1=Credit card, 2=Cash, 3=No charge, 4=Dispute, 5=Unknown, 6=Voided)
+  - name: fare_amount
+    type: float
+    description: Time and distance fare
+  - name: extra
+    type: float
+    description: Miscellaneous extras and surcharges
+  - name: mta_tax
+    type: float
+    description: MTA tax
+  - name: tip_amount
+    type: float
+    description: Tip amount (credit card only)
+  - name: tolls_amount
+    type: float
+    description: Total tolls paid
+  - name: improvement_surcharge
+    type: float
+    description: Improvement surcharge
+  - name: total_amount
+    type: float
+    description: Total amount charged
+  - name: trip_type
+    type: integer
+    description: Trip type (1=Street-hail, 2=Dispatch)
+  - name: ehail_fee
+    type: string
+    description: E-hail fee
+  - name: extracted_at
+    type: timestamp
+    description: datetime bruin loaded the data
 
-# TODO: Add one custom check that validates a staging invariant (uniqueness, ranges, etc.)
+# Add one custom check that validates a staging invariant (uniqueness, ranges, etc.)
 # Docs: https://getbruin.com/docs/bruin/quality/custom
 custom_checks:
-  - name: TODO_custom_check_name
-    description: TODO
+  - name: location_not_null
+    description: Pick up and drop off location are not null
     query: |
-      -- TODO: return a single scalar (COUNT(*), etc.) that should match `value`
-      SELECT 0
+      SELECT COUNT(*) FROM staging.trips WHERE pulocationid IS NULL OR pulocationid IS NULL;
+    value: 0
+  - name: unique_composite
+    description: composite key should be unique
+    query: |
+      SELECT CASE
+          WHEN COUNT(DISTINCT composite_key) = COUNT(composite_key) THEN 0
+          ELSE 1
+      END AS UniquenessCheck
+      FROM staging.trips;
     value: 0
 
 @bruin */
+
+-- query: |
+--   SELECT COUNT(*) FROM staging.trips GROUP BY composite_key HAVING COUNT(composite_key) > 1;
 
 -- TODO: Write the staging SELECT query.
 --
@@ -95,7 +151,34 @@ custom_checks:
 -- Therefore, your query MUST filter to the same time window so only that subset is inserted.
 -- If you don't filter, you'll insert ALL data but only delete the window's data = duplicates.
 
-SELECT *
+SELECT
+    MD5(CONCAT(
+      pulocationid, 
+      dolocationid, 
+      CAST(lpep_pickup_datetime AS STRING),
+      CAST(lpep_dropoff_datetime AS STRING),
+      CAST(total_amount AS STRING)
+    ))AS composite_key,
+    vendorid,
+    lpep_pickup_datetime AS pickup_datetime,
+    lpep_dropoff_datetime AS dropoff_datetime,
+    passenger_count,
+    trip_distance,
+    pulocationid,
+    dolocationid,
+    ratecodeid,
+    store_and_fwd_flag,
+    payment_type,
+    fare_amount,
+    extra,
+    mta_tax,
+    tip_amount,
+    tolls_amount,
+    improvement_surcharge,
+    total_amount,
+    trip_type,
+    ehail_fee,
+    extracted_at,
 FROM ingestion.trips
 WHERE pickup_datetime >= '{{ start_datetime }}'
   AND pickup_datetime < '{{ end_datetime }}'

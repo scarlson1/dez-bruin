@@ -7,14 +7,14 @@
 # - Run command: https://getbruin.com/docs/bruin/commands/run
 
 # Set a pipeline name (string). This shows up in logs + `BRUIN_PIPELINE` for Python assets.
-name: "NYC TAXI"
+name: "NYC_TAXI"
 
 # Pick a schedule ("daily", "hourly", "weekly", "monthly") or a cron string.
 schedule: "daily"
 
 # Set the earliest date this pipeline should consider for full refresh backfills.
 # Format: YYYY-MM-DD
-start_date: "2026-02-09"
+start_date: "2019-01-01"
 
 # Configure default connections so assets can omit explicit `connection: ...`.
 # Common pattern: `duckdb: duckdb-default` for local dev.
@@ -29,10 +29,13 @@ default_connections:
 variables:
   # Define `taxi_types` as an array of strings with a sensible default.
   taxi_types:
-    type: ["yellow", "green"]  # should be: array
+    type: array #  # should be: array
     items:
       type: string  # should be: string
-    default: "yellow"  # e.g. ["yellow", "green"]
-#   other_string_var: (optional) Add your own variable and use it in both Python and SQL assets.
-#     type: string
-#     default: "my_value"
+    default: ["yellow", "green"]  # e.g. ["yellow", "green"]
+  # start_date:
+  #   type: string
+  #   default: "2019-01-01"
+  # end_date:
+  #   type: string
+  #   default: "2019-02-01"
